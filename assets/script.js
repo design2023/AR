@@ -44,16 +44,36 @@ function init() {
   //
 
   const geometry = new CylinderGeometry(0.1, 0.1, 0.2, 32).translate(0, 0.1, 0);
-
+  let loaderGlb = new GLTFLoader();
   function onSelect() {
     if (reticle.visible) {
-      const material = new MeshPhongMaterial({
-        color: 0xffffff * Math.random(),
-      });
-      const mesh = new Mesh(geometry, material);
-      reticle.matrix.decompose(mesh.position, mesh.quaternion, mesh.scale);
-      mesh.scale.y = Math.random() * 2 + 1;
-      scene.add(mesh);
+        
+         loaderGlb.load(
+            "https://storage.googleapis.com/kitchendata/objects/BU-1 L.glb",
+            async function (gltf) {
+              // save the object.
+              let Objobject = gltf.scene;
+              reticle.matrix.decompose(Objobject.position, Objobject.quaternion, Objobject.scale);
+
+              scene.add(Objobject);
+            
+            
+            });
+
+
+
+    //   const material = new MeshPhongMaterial({
+    //     color: 0xffffff * Math.random(),
+    //   });
+    //   const mesh = new Mesh(geometry, material);
+
+
+
+    //   reticle.matrix.decompose(mesh.position, mesh.quaternion, mesh.scale);
+    //   mesh.scale.y = Math.random() * 2 + 1;
+
+
+    //   scene.add(mesh);
     }
   }
 
