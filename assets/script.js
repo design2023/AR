@@ -49,7 +49,7 @@ function init() {
     if (reticle.visible) {
         
          loaderGlb.load(
-            "https://storage.googleapis.com/kitchendata/objects/BU-1 L.glb",
+            "https://storage.googleapis.com/kitchendata/objects/ar_test.glb",
             async function (gltf) {
               // save the object.
               let Objobject = gltf.scene;
