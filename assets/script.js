@@ -1,152 +1,127 @@
-import * as THREE from 'three'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import * as dat from 'lil-gui'
+let container;
+let camera, scene, renderer;
+let controller;
 
-THREE.ColorManagement.enabled = false
+let reticle;
 
-/**
- * Debug
- */
-const gui = new dat.GUI()
+let hitTestSource = null;
+let hitTestSourceRequested = false;
 
-/**
- * Base
- */
-// Canvas
-const canvas = document.querySelector('canvas.webgl')
+init();
+animate();
 
-// Scene
-const scene = new THREE.Scene()
+function init() {
+  container = document.createElement("div");
+  document.body.appendChild(container);
 
-/**
- * Textures
- */
-const textureLoader = new THREE.TextureLoader()
-const cubeTextureLoader = new THREE.CubeTextureLoader()
+  scene = new Scene();
 
-const environmentMapTexture = cubeTextureLoader.load([
-    '/textures/environmentMaps/0/px.png',
-    '/textures/environmentMaps/0/nx.png',
-    '/textures/environmentMaps/0/py.png',
-    '/textures/environmentMaps/0/ny.png',
-    '/textures/environmentMaps/0/pz.png',
-    '/textures/environmentMaps/0/nz.png'
-])
+  camera = new PerspectiveCamera(
+    70,
+    window.innerWidth / window.innerHeight,
+    0.01,
+    20
+  );
 
-/**
- * Test sphere
- */
-const sphere = new THREE.Mesh(
-    new THREE.SphereGeometry(0.5, 32, 32),
-    new THREE.MeshStandardMaterial({
-        metalness: 0.3,
-        roughness: 0.4,
-        envMap: environmentMapTexture,
-        envMapIntensity: 0.5
-    })
-)
-sphere.castShadow = true
-sphere.position.y = 0.5
-scene.add(sphere)
+  const light = new HemisphereLight(0xffffff, 0xbbbbff, 3);
+  light.position.set(0.5, 1, 0.25);
+  scene.add(light);
 
-/**
- * Floor
- */
-const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(10, 10),
-    new THREE.MeshStandardMaterial({
-        color: '#777777',
-        metalness: 0.3,
-        roughness: 0.4,
-        envMap: environmentMapTexture,
-        envMapIntensity: 0.5
-    })
-)
-floor.receiveShadow = true
-floor.rotation.x = - Math.PI * 0.5
-scene.add(floor)
+  //
 
-/**
- * Lights
- */
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.7)
-scene.add(ambientLight)
+  renderer = new WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.xr.enabled = true;
+  container.appendChild(renderer.domElement);
 
-const directionalLight = new THREE.DirectionalLight(0xffffff, 0.2)
-directionalLight.castShadow = true
-directionalLight.shadow.mapSize.set(1024, 1024)
-directionalLight.shadow.camera.far = 15
-directionalLight.shadow.camera.left = - 7
-directionalLight.shadow.camera.top = 7
-directionalLight.shadow.camera.right = 7
-directionalLight.shadow.camera.bottom = - 7
-directionalLight.position.set(5, 5, 5)
-scene.add(directionalLight)
+  //
 
-/**
- * Sizes
- */
-const sizes = {
-    width: window.innerWidth,
-    height: window.innerHeight
+  document.body.appendChild(
+    ARButton.createButton(renderer, { requiredFeatures: ["hit-test"] })
+  );
+
+  //
+
+  const geometry = new CylinderGeometry(0.1, 0.1, 0.2, 32).translate(0, 0.1, 0);
+
+  function onSelect() {
+    if (reticle.visible) {
+      const material = new MeshPhongMaterial({
+        color: 0xffffff * Math.random(),
+      });
+      const mesh = new Mesh(geometry, material);
+      reticle.matrix.decompose(mesh.position, mesh.quaternion, mesh.scale);
+      mesh.scale.y = Math.random() * 2 + 1;
+      scene.add(mesh);
+    }
+  }
+
+  controller = renderer.xr.getController(0);
+  controller.addEventListener("select", onSelect);
+  scene.add(controller);
+
+  reticle = new Mesh(
+    new RingGeometry(0.15, 0.2, 32).rotateX(-Math.PI / 2),
+    new MeshBasicMaterial()
+  );
+  reticle.matrixAutoUpdate = false;
+  reticle.visible = false;
+  scene.add(reticle);
+
+  //
+
+  window.addEventListener("resize", onWindowResize);
 }
 
-window.addEventListener('resize', () =>
-{
-    // Update sizes
-    sizes.width = window.innerWidth
-    sizes.height = window.innerHeight
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
 
-    // Update camera
-    camera.aspect = sizes.width / sizes.height
-    camera.updateProjectionMatrix()
-
-    // Update renderer
-    renderer.setSize(sizes.width, sizes.height)
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-})
-
-/**
- * Camera
- */
-// Base camera
-const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
-camera.position.set(- 3, 3, 3)
-scene.add(camera)
-
-// Controls
-const controls = new OrbitControls(camera, canvas)
-controls.enableDamping = true
-
-/**
- * Renderer
- */
-const renderer = new THREE.WebGLRenderer({
-    canvas: canvas
-})
-renderer.outputColorSpace = THREE.LinearSRGBColorSpace
-renderer.shadowMap.enabled = true
-renderer.shadowMap.type = THREE.PCFSoftShadowMap
-renderer.setSize(sizes.width, sizes.height)
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-
-/**
- * Animate
- */
-const clock = new THREE.Clock()
-
-const tick = () =>
-{
-    const elapsedTime = clock.getElapsedTime()
-
-    // Update controls
-    controls.update()
-
-    // Render
-    renderer.render(scene, camera)
-
-    // Call tick again on the next frame
-    window.requestAnimationFrame(tick)
+  renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
-tick()
+//
+
+function animate() {
+  renderer.setAnimationLoop(render);
+}
+
+function render(timestamp, frame) {
+  if (frame) {
+    const referenceSpace = renderer.xr.getReferenceSpace();
+    const session = renderer.xr.getSession();
+
+    if (hitTestSourceRequested === false) {
+      session.requestReferenceSpace("viewer").then(function (referenceSpace) {
+        session
+          .requestHitTestSource({ space: referenceSpace })
+          .then(function (source) {
+            hitTestSource = source;
+          });
+      });
+
+      session.addEventListener("end", function () {
+        hitTestSourceRequested = false;
+        hitTestSource = null;
+      });
+
+      hitTestSourceRequested = true;
+    }
+
+    if (hitTestSource) {
+      const hitTestResults = frame.getHitTestResults(hitTestSource);
+
+      if (hitTestResults.length) {
+        const hit = hitTestResults[0];
+
+        reticle.visible = true;
+        reticle.matrix.fromArray(hit.getPose(referenceSpace).transform.matrix);
+      } else {
+        reticle.visible = false;
+      }
+    }
+  }
+
+  renderer.render(scene, camera);
+}
