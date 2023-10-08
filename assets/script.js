@@ -23,8 +23,9 @@ function init() {
     20
   );
 
-  const light = new HemisphereLight(0xffffff, 0xbbbbff, 3);
-  light.position.set(0.5, 1, 0.25);
+//   const light = new HemisphereLight(0xffffff, 0xbbbbff, 3);
+  const light = new HemisphereLight(0xaaaaaa, 0xaaaaaa, 1);
+//   light.position.set(0.5, 1, 0.25);
   scene.add(light);
 
   //
